@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ShipEasy – Print Labels</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f0ede8;
+  --surface: #ffffff;
+  --border: #e2ddd6;
+  --text: #1a1714;
+  --muted: #7a736b;
+  --accent: #2d6a4f;
+  --accent-bg: #e8f5ee;
+  --accent-dark: #1b4332;
+  --warn: #b45309;
+  --warn-bg: #fef3c7;
+  --radius: 14px;
+  --font: 'Outfit', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ── NAV ── */
+.nav {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.nav-logo {
+  font-size: 17px;
+  font-weight: 700;
+  flex: 1;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav-logo .pill {
+  background: var(--accent);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+}
+.nav-icon-btn {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 17px;
+  transition: background 0.15s;
+}
+.nav-icon-btn:hover { background: var(--bg); }
+.nav-btn {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: none;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.nav-btn.primary { background: var(--accent); color: white; }
+.nav-btn.primary:hover { background: var(--accent-dark); }
+.nav-btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.nav-btn.ghost:hover { background: var(--bg); }
+
+/* ── SCREENS ── */
+.screen { display: none; animation: fadeIn 0.2s ease; }
+.screen.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ── SETUP / SETTINGS ── */
+.page-wrap {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px 16px 120px;
+}
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 4px;
+}
+.page-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  padding: 14px 16px 0;
+}
+.field-row {
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.field-row:last-child { border-bottom: none; }
+.field-label {
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 110px;
+  flex-shrink: 0;
+}
+.field-label small {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.field-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text);
+  text-align: right;
+  outline: none;
+  min-width: 0;
+}
+.field-input::placeholder { color: #bbb; }
+.field-input:focus { color: var(--accent); }
+
+.logo-upload-area {
+  margin: 10px 16px 14px;
+  border: 1.5px dashed var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+}
+.logo-upload-area:hover { border-color: var(--accent); background: var(--accent-bg); }
+.logo-upload-area input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.logo-preview {
+  max-height: 60px;
+  max-width: 180px;
+  object-fit: contain;
+  display: none;
+  margin: 0 auto;
+}
+.logo-placeholder {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.logo-placeholder span { display: block; font-size: 24px; margin-bottom: 4px; }
+
+.btn-full {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 8px;
+}
+.btn-full:hover { background: var(--accent-dark); }
+
+/* ── HOME / UPLOAD ── */
+.home-wrap {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 24px 16px 120px;
+}
+
+.upload-zone {
+  background: var(--surface);
+  border: 2px dashed var(--border);
+  border-radius: 18px;
+  padding: 40px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  margin-bottom: 20px;
+}
+.upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--accent-bg); }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.upload-icon { font-size: 40px; margin-bottom: 12px; }
+.upload-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.upload-sub { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+.how-card {
+  background: var(--warn-bg);
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.how-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warn);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.how-steps {
+  list-style: none;
+  counter-reset: s;
+}
+.how-steps li {
+  counter-increment: s;
+  font-size: 13px;
+  color: #78350f;
+  padding: 4px 0 4px 24px;
+  position: relative;
+  line-height: 1.4;
+}
+.how-steps li::before {
+  content: counter(s);
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 16px; height: 16px;
+  background: var(--warn);
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.how-steps li strong { color: #451a03; }
+
+/* ── ORDERS LIST ── */
+.toolbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+.badge-green { background: var(--accent-bg); color: var(--accent-dark); }
+.badge-gray { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+
+.sel-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text);
+  transition: all 0.15s;
+}
+.sel-btn:hover { background: var(--bg); }
+
+.orders-list {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 100px;
+}
+
+.order-card {
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  padding: 13px 14px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  user-select: none;
+}
+.order-card.selected {
+  border-color: var(--accent);
+  background: #f0faf4;
+}
+.order-check {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  margin-top: 1px;
+}
+.order-card.selected .order-check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.check-svg { display: none; }
+.order-card.selected .check-svg { display: block; }
+
+.order-info { flex: 1; min-width: 0; }
+.order-row1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.order-name {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.order-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--bg);
+  padding: 2px 7px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.order-addr {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 5px;
+}
+.order-tags { display: flex; gap: 5px; }
+.tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 5px;
+  letter-spacing: 0.03em;
+}
+.tag-open { background: #fef3c7; color: #92400e; }
+.tag-items { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+
+/* ── BATCH BAR ── */
+.batch-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  padding: 12px 16px;
+  background: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transform: translateY(110%);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 200;
+}
+.batch-bar.show { transform: translateY(0); }
+.batch-info { flex: 1; }
+.batch-info span { display: block; font-size: 14px; font-weight: 600; color: white; }
+.batch-info small { font-size: 11px; color: #888; }
+.print-btn {
+  padding: 11px 22px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.print-btn:hover { background: var(--accent-dark); }
+
+/* ── PRINT OVERLAY ── */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 300;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.overlay.open { display: block; }
+.overlay-inner {
+  max-width: 460px;
+  margin: 16px auto 80px;
+  padding: 0 12px;
+}
+.overlay-header {
+  background: var(--surface);
+  border-radius: 14px 14px 0 0;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 16px;
+  z-index: 10;
+}
+.overlay-header h3 { flex: 1; font-size: 15px; font-weight: 700; }
+.overlay-body {
+  background: #e8e4de;
+  padding: 16px;
+  border-radius: 0 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── BRAND COLORS ── */
+:root {
+  --brand-navy: #1F0D3F;
+  --brand-pink: #EB2674;
+  --brand-coral: #F16349;
+}
+
+/* ── 4×6 LABEL ── */
+.label-wrap {
+  background: white;
+  padding: 5px;
+  border-radius: 6px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  width: 100%;
+  max-width: 384px;
+  margin: 0 auto;
+}
+
+.label {
+  width: 100%;
+  aspect-ratio: 4/6;
+  background: white;
+  border: 2.5px solid var(--brand-navy);
+  font-family: var(--font);
+  color: #111;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+/* ── TOP GRADIENT STRIPE ── */
+.lbl-stripe {
+  height: 6px;
+  background: linear-gradient(90deg, var(--brand-navy) 0%, var(--brand-pink) 55%, var(--brand-coral) 100%);
+  flex-shrink: 0;
+}
+
+/* ── HEADER: navy band, logo left, order right ── */
+.lbl-header {
+  background: var(--brand-navy);
+  padding: 9px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 10px;
+  min-height: 48px;
+}
+.lbl-logo {
+  height: 30px;
+  max-width: 110px;
+  object-fit: contain;
+}
+.lbl-shop-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  letter-spacing: 0.02em;
+}
+.lbl-order-block { text-align: right; flex-shrink: 0; }
+.lbl-order-label {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--brand-coral);
+  display: block;
+  margin-bottom: 1px;
+}
+.lbl-order-value {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+/* ── SHIP TO SECTION ── */
+.lbl-to {
+  flex: 1;
+  padding: 12px 16px 12px 14px;
+  border-left: 6px solid var(--brand-pink);
+  margin: 8px 0 0 0;
+  position: relative;
+  overflow: hidden;
+}
+/* Watermark logo */
+.lbl-watermark {
+  position: absolute;
+  right: -10px;
+  bottom: -10px;
+  width: 110px;
+  height: 110px;
+  object-fit: contain;
+  opacity: 0.1;
+  pointer-events: none;
+}
+.lbl-section-tag {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--brand-pink);
+  margin-bottom: 6px;
+  display: block;
+}
+.lbl-to-name {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #000;
+  margin-bottom: 10px;
+}
+.lbl-to-addr {
+  font-size: 16px;
+  line-height: 1.7;
+  color: #1a1a1a;
+  font-weight: 500;
+}
+.lbl-to-pin {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  margin-top: 8px;
+  letter-spacing: 0.06em;
+}
+.lbl-to-phone {
+  font-size: 15px;
+  font-weight: 700;
+  color: #333;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ── DIVIDER ── */
+.lbl-divider {
+  height: 1px;
+  background: repeating-linear-gradient(90deg, #ddd 0, #ddd 5px, transparent 5px, transparent 10px);
+  margin: 6px 14px;
+  flex-shrink: 0;
+}
+
+/* ── FROM SECTION ── */
+.lbl-from {
+  padding: 8px 14px 8px 14px;
+  border-left: 6px solid var(--brand-coral);
+  margin: 0 0 8px 0;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.lbl-from-text { flex: 1; min-width: 0; }
+.lbl-from-logo {
+  width: 130px;
+  height: 130px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.lbl-from-tag {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--brand-coral);
+  margin-bottom: 4px;
+  display: block;
+}
+.lbl-from-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  margin-bottom: 3px;
+}
+.lbl-from-addr {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #444;
+}
+.lbl-from-phone {
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
+}
+
+/* ── FOOTER ── */
+.lbl-footer {
+  border-top: 1px solid #ddd;
+  padding: 5px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  background: #f9f9f9;
+}
+.lbl-date {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: #444;
+}
+.lbl-barcode {
+  display: flex;
+  gap: 1.5px;
+  align-items: flex-end;
+  height: 20px;
+}
+.lbl-barcode div { background: #444; }
+
+/* ── EMPTY / ERROR ── */
+.empty {
+  text-align: center;
+  padding: 56px 24px;
+  color: var(--muted);
+}
+.empty-icon { font-size: 44px; margin-bottom: 14px; }
+.empty h3 { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.empty p { font-size: 13px; line-height: 1.5; }
+
+.toast {
+  position: fixed;
+  top: 62px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  background: var(--text);
+  color: white;
+  padding: 10px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  transition: all 0.25s;
+  z-index: 500;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── PRINT STYLES ── */
+@media print {
+  @page { size: 4in 6in; margin: 0; }
+
+  body > * { display: none !important; }
+
+  .overlay {
+    display: block !important;
+    position: static !important;
+    background: transparent !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  .overlay-header { display: none !important; }
+  .overlay-inner { margin: 0 !important; padding: 0 !important; max-width: none !important; }
+  .overlay-body {
+    background: white !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    border-radius: 0 !important;
+    display: block !important;
+  }
+  .label-wrap {
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: none !important;
+    width: 4in !important;
+    page-break-after: always;
+    border-radius: 0 !important;
+  }
+  .label {
+    width: 4in !important;
+    height: 6in !important;
+    aspect-ratio: unset !important;
+    border: 2px solid var(--brand-navy) !important;
+    border-radius: 0 !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">
+    ShipEasy <span class="pill">CSV</span>
+  </div>
+  <button class="nav-icon-btn" id="settingsNavBtn" onclick="showScreen('settings')" style="display:none" title="Settings">⚙️</button>
+  <button class="nav-btn ghost" id="backNavBtn" onclick="goBack()" style="display:none">← Back</button>
+  <button class="nav-btn primary" id="uploadNewBtn" onclick="showScreen('home')" style="display:none">+ New CSV</button>
+</nav>
+
+<!-- ══════════ HOME SCREEN ══════════ -->
+<div class="screen active" id="screen-home">
+  <div class="home-wrap">
+
+    <div class="how-card">
+      <div class="how-title">📦 How to get your orders CSV</div>
+      <ol class="how-steps">
+        <li>Go to <strong>Shopify Admin → Orders</strong></li>
+        <li>Click <strong>Export</strong> (top right)</li>
+        <li>Select <strong>"Unfulfilled orders"</strong></li>
+        <li>Choose <strong>"Plain CSV file"</strong> → Export</li>
+        <li>Upload the downloaded file below</li>
+      </ol>
+    </div>
+
+    <div class="upload-zone" id="uploadZone">
+      <div class="upload-icon">📂</div>
+      <div class="upload-title">Upload Shopify Orders CSV</div>
+      <div class="upload-sub">Tap the button below to choose your file</div>
+      <input type="file" accept=".csv,text/csv,text/plain,application/csv" id="csvFile" onchange="handleCSV(this.files[0])" style="display:block;width:100%;margin-top:14px;font-size:15px;color:var(--accent);">
+    </div>
+
+    <div id="setupPrompt" style="display:none">
+      <div class="card" style="border-color:#fbbf24;background:#fffbeb">
+        <div style="padding:14px 16px;font-size:13px;color:#92400e;line-height:1.5">
+          ⚠️ <strong>Set up your sender address first!</strong><br>
+          Go to Settings to add your shop name, logo and address — it'll appear on every label.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════ ORDERS SCREEN ══════════ -->
+<div class="screen" id="screen-orders">
+  <div class="toolbar">
+    <button class="sel-btn" onclick="toggleAll()">Select All</button>
+    <span class="badge badge-green" id="orderCount">0 orders</span>
+    <span style="flex:1"></span>
+    <span class="badge badge-gray" id="selCount" style="display:none"></span>
+  </div>
+  <div class="orders-list" id="ordersList"></div>
+</div>
+
+<!-- ══════════ SETTINGS SCREEN ══════════ -->
+<div class="screen" id="screen-settings">
+  <div class="page-wrap">
+    <div class="page-title">Settings</div>
+    <div class="page-sub">Your sender details appear on every label</div>
+
+    <div class="card">
+      <div class="card-title">Shop Logo</div>
+      <div class="logo-upload-area" id="logoUploadArea">
+        <img class="logo-preview" id="logoPreview" src="" alt="Logo">
+        <div class="logo-placeholder" id="logoPlaceholder">
+          <span>🖼️</span>
+          Tap below to upload your logo<br>
+          <small style="font-size:11px;color:#bbb">PNG, JPG — will appear on label</small>
+        </div>
+        <input type="file" accept="image/*" id="logoFile" onchange="handleLogo(this.files[0])" style="display:block;width:100%;margin-top:10px;font-size:14px;color:var(--accent);">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Sender / From Address</div>
+      <div class="field-row">
+        <div class="field-label">Shop Name</div>
+        <input class="field-input" id="sName" placeholder="Littl Store" type="text">
+      </div>
+      <div class="field-row">
+        <div class="field-label">Address Line 1</div>
+        <input class="field-input" id="sAddr1" placeholder="123 MG Road" type="text">
+      </div>
+      <div class="field-row">
+        <div class="field-label">Address Line 2</div>
+        <input class="field-input" id="sAddr2" placeholder="Near XYZ Mall (optional)" type="text">
+      </div>
+      <div class="field-row">
+        <div class="field-label">City</div>
+        <input class="field-input" id="sCity" placeholder="Surat" type="text">
+      </div>
+      <div class="field-row">
+        <div class="field-label">State</div>
+        <input class="field-input" id="sState" placeholder="Gujarat" type="text">
+      </div>
+      <div class="field-row">
+        <div class="field-label">PIN Code</div>
+        <input class="field-input" id="sPIN" placeholder="395001" type="text" inputmode="numeric">
+      </div>
+      <div class="field-row">
+        <div class="field-label">Phone</div>
+        <input class="field-input" id="sPhone" placeholder="+91 XXXXX XXXXX" type="tel">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Label Options</div>
+      <div class="field-row">
+        <div class="field-label">Show Phone <small>on label</small></div>
+        <input type="checkbox" id="optPhone" checked style="width:auto;accent-color:var(--accent)">
+      </div>
+      <div class="field-row">
+        <div class="field-label">Show Order No. <small>on label</small></div>
+        <input type="checkbox" id="optOrder" checked style="width:auto;accent-color:var(--accent)">
+      </div>
+    </div>
+
+    <button class="btn-full" onclick="saveSettings()">Save Settings</button>
+  </div>
+</div>
+
+<!-- ══════════ PRINT OVERLAY ══════════ -->
+<div class="overlay" id="printOverlay">
+  <div class="overlay-inner">
+    <div class="overlay-header">
+      <h3 id="overlayTitle">Labels</h3>
+      <button class="nav-btn ghost" onclick="closeOverlay()">Cancel</button>
+      <button class="nav-btn ghost" onclick="downloadPDF()" id="dlBtn">⬇ PDF</button>
+      <button class="nav-btn primary" onclick="window.print()">🖨 Print</button>
+    </div>
+    <div class="overlay-body" id="labelsBody"></div>
+  </div>
+</div>
+
+<!-- BATCH BAR -->
+<div class="batch-bar" id="batchBar">
+  <div class="batch-info">
+    <span id="batchCount">0 selected</span>
+    <small>Tap Print to generate labels</small>
+  </div>
+  <button class="print-btn" onclick="printSelected()">🖨 Print Labels</button>
+</div>
+
+<script>
+// ── STATE ──
+let orders = [];
+let selected = new Set();
+let logoDataUrl = '';
+let prevScreen = 'home';
+
+const S = k => localStorage.getItem('se_' + k) || '';
+const SS = (k, v) => localStorage.setItem('se_' + k, v);
+
+// ── SCREENS ──
+function showScreen(name) {
+  prevScreen = document.querySelector('.screen.active')?.id?.replace('screen-','') || 'home';
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+
+  const onOrders = name === 'orders';
+  const onSettings = name === 'settings';
+  const onHome = name === 'home';
+
+  document.getElementById('settingsNavBtn').style.display = (onOrders || onHome) ? 'flex' : 'none';
+  document.getElementById('backNavBtn').style.display = onSettings ? 'flex' : 'none';
+  document.getElementById('uploadNewBtn').style.display = onOrders ? 'flex' : 'none';
+
+  if (onSettings) loadSettingsUI();
+  if (onHome) checkSetupPrompt();
+}
+
+function goBack() { showScreen(prevScreen === 'settings' ? 'orders' : 'home'); }
+
+function checkSetupPrompt() {
+  const hasSettings = S('name') || S('addr1');
+  document.getElementById('setupPrompt').style.display = hasSettings ? 'none' : 'block';
+}
+
+// ── SETTINGS ──
+function loadSettingsUI() {
+  document.getElementById('sName').value  = S('name');
+  document.getElementById('sAddr1').value = S('addr1');
+  document.getElementById('sAddr2').value = S('addr2');
+  document.getElementById('sCity').value  = S('city');
+  document.getElementById('sState').value = S('state');
+  document.getElementById('sPIN').value   = S('pin');
+  document.getElementById('sPhone').value = S('phone');
+  document.getElementById('optPhone').checked = S('optPhone') !== 'false';
+  document.getElementById('optOrder').checked = S('optOrder') !== 'false';
+
+  logoDataUrl = S('logo');
+  if (logoDataUrl) {
+    document.getElementById('logoPreview').src = logoDataUrl;
+    document.getElementById('logoPreview').style.display = 'block';
+    document.getElementById('logoPlaceholder').style.display = 'none';
+  }
+}
+
+function saveSettings() {
+  SS('name',     document.getElementById('sName').value.trim());
+  SS('addr1',    document.getElementById('sAddr1').value.trim());
+  SS('addr2',    document.getElementById('sAddr2').value.trim());
+  SS('city',     document.getElementById('sCity').value.trim());
+  SS('state',    document.getElementById('sState').value.trim());
+  SS('pin',      document.getElementById('sPIN').value.trim());
+  SS('phone',    document.getElementById('sPhone').value.trim());
+  SS('optPhone', document.getElementById('optPhone').checked);
+  SS('optOrder', document.getElementById('optOrder').checked);
+  showToast('✅ Settings saved!');
+  goBack();
+}
+
+function handleLogo(file) {
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    logoDataUrl = e.target.result;
+    SS('logo', logoDataUrl);
+    document.getElementById('logoPreview').src = logoDataUrl;
+    document.getElementById('logoPreview').style.display = 'block';
+    document.getElementById('logoPlaceholder').style.display = 'none';
+  };
+  r.readAsDataURL(file);
+}
+
+// ── CSV PARSING ──
+// Shopify CSV columns we care about:
+// Name, Email, Shipping Name, Shipping First Name, Shipping Last Name,
+// Shipping Address1, Shipping Address2, Shipping City, Shipping Province,
+// Shipping Country, Shipping Zip, Shipping Phone, Total Items
+function handleCSV(file) {
+  if (!file) { showToast('⚠️ No file selected'); return; }
+  showToast('📂 Reading file...');
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      let text = e.target.result;
+      // Normalize line endings for iOS/Windows
+      text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+      const rows = parseCSV(text);
+      if (rows.length < 2) { showToast('⚠️ Empty or invalid CSV'); return; }
+
+      const headers = rows[0].map(h => h.trim().toLowerCase());
+
+      const col = name => headers.indexOf(name.toLowerCase());
+
+      const iOrderNum   = col('name');
+      const iSFName     = col('shipping first name');
+      const iSLName     = col('shipping last name');
+      const iSName      = col('shipping name');
+      const iSAddr1     = col('shipping address1');
+      const iSAddr2     = col('shipping address2');
+      const iSCity      = col('shipping city');
+      const iSProv      = col('shipping province');
+      const iSCountry   = col('shipping country');
+      const iSZip       = col('shipping zip');
+      const iSPhone     = col('shipping phone');
+      const iEmail      = col('email');
+      const iItems      = col('lineitem name');
+
+      if (iOrderNum < 0) { showToast('⚠️ Not a Shopify CSV — column "Name" missing'); return; }
+
+      const seen = new Map();
+
+      rows.slice(1).forEach(row => {
+        if (!row.length || !row[iOrderNum]) return;
+        const orderNum = row[iOrderNum]?.trim();
+        if (!orderNum) return;
+
+        if (!seen.has(orderNum)) {
+          const fname = iSFName >= 0 ? row[iSFName]?.trim() : '';
+          const lname = iSLName >= 0 ? row[iSLName]?.trim() : '';
+          let name = (fname + ' ' + lname).trim();
+          if (!name && iSName >= 0) name = row[iSName]?.trim();
+
+          seen.set(orderNum, {
+            orderNum,
+            name:    name || 'Unknown',
+            addr1:   iSAddr1   >= 0 ? row[iSAddr1]?.trim()   : '',
+            addr2:   iSAddr2   >= 0 ? row[iSAddr2]?.trim()   : '',
+            city:    iSCity    >= 0 ? row[iSCity]?.trim()    : '',
+            state:   iSProv    >= 0 ? row[iSProv]?.trim()    : '',
+            country: iSCountry >= 0 ? row[iSCountry]?.trim() : '',
+            zip:     iSZip     >= 0 ? row[iSZip]?.trim()     : '',
+            phone:   iSPhone   >= 0 ? row[iSPhone]?.trim()   : '',
+            email:   iEmail    >= 0 ? row[iEmail]?.trim()    : '',
+            items: []
+          });
+        }
+
+        if (iItems >= 0 && row[iItems]?.trim()) {
+          seen.get(orderNum).items.push(row[iItems].trim());
+        }
+      });
+
+      orders = Array.from(seen.values());
+
+      if (orders.length === 0) {
+        showToast('⚠️ No orders found — ' + (rows.length - 1) + ' rows scanned');
+        return;
+      }
+
+      selected.clear();
+      updateBatch();
+      renderOrders();
+      showScreen('orders');
+      showToast(`✅ ${orders.length} orders loaded`);
+    } catch(err) {
+      showToast('⚠️ Error: ' + err.message);
+    }
+  };
+  r.onerror = () => showToast('⚠️ Could not read file');
+  r.readAsText(file, 'UTF-8');
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cell = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') {
+      if (inQ && text[i+1] === '"') { cell += '"'; i++; }
+      else inQ = !inQ;
+    } else if (c === ',' && !inQ) {
+      row.push(cell); cell = '';
+    } else if ((c === '\n' || c === '\r') && !inQ) {
+      row.push(cell); cell = '';
+      if (row.some(v => v)) rows.push(row);
+      row = [];
+      if (c === '\r' && text[i+1] === '\n') i++;
+    } else {
+      cell += c;
+    }
+  }
+  if (cell || row.length) { row.push(cell); if (row.some(v=>v)) rows.push(row); }
+  return rows;
+}
+
+// ── RENDER ORDERS ──
+function renderOrders() {
+  const list = document.getElementById('ordersList');
+  document.getElementById('orderCount').textContent = orders.length + ' orders';
+
+  if (!orders.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">📦</div><h3>No orders</h3><p>Upload a CSV to get started</p></div>`;
+    return;
+  }
+
+  list.innerHTML = orders.map((o, i) => {
+    const sel = selected.has(i);
+    const cityLine = [o.city, o.state].filter(Boolean).join(', ');
+    return `
+    <div class="order-card ${sel ? 'selected' : ''}" onclick="toggleOrder(${i})">
+      <div class="order-check">
+        <svg class="check-svg" width="12" height="12" viewBox="0 0 12 12">
+          <path d="M2 6l3 3 5-5" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="order-info">
+        <div class="order-row1">
+          <div class="order-name">${esc(o.name)}</div>
+          <div class="order-num">${esc(o.orderNum)}</div>
+        </div>
+        <div class="order-addr">${esc(cityLine || o.addr1 || '—')}</div>
+        <div class="order-tags">
+          <span class="tag tag-open">Unfulfilled</span>
+          ${o.items.length ? `<span class="tag tag-items">${o.items.length} item${o.items.length>1?'s':''}</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleOrder(i) {
+  if (selected.has(i)) selected.delete(i);
+  else selected.add(i);
+  const card = document.querySelectorAll('.order-card')[i];
+  if (card) card.classList.toggle('selected', selected.has(i));
+  const check = card?.querySelector('.order-check');
+  if (check) {
+    check.style.background = selected.has(i) ? 'var(--accent)' : '';
+    check.style.borderColor = selected.has(i) ? 'var(--accent)' : '';
+  }
+  updateBatch();
+}
+
+function toggleAll() {
+  if (selected.size === orders.length) selected.clear();
+  else orders.forEach((_, i) => selected.add(i));
+  renderOrders();
+  updateBatch();
+}
+
+function updateBatch() {
+  const n = selected.size;
+  const bar = document.getElementById('batchBar');
+  document.getElementById('batchCount').textContent = `${n} order${n !== 1 ? 's' : ''} selected`;
+  document.getElementById('selCount').textContent = n ? `${n} selected` : '';
+  document.getElementById('selCount').style.display = n ? 'inline-flex' : 'none';
+  bar.classList.toggle('show', n > 0);
+}
+
+// ── PRINT ──
+function printSelected() {
+  const toprint = [...selected].map(i => orders[i]);
+  if (!toprint.length) return;
+  renderLabels(toprint);
+  document.getElementById('overlayTitle').textContent = `${toprint.length} Label${toprint.length > 1 ? 's' : ''} — 4" × 6"`;
+  document.getElementById('printOverlay').classList.add('open');
+}
+
+function closeOverlay() {
+  document.getElementById('printOverlay').classList.remove('open');
+}
+
+async function downloadPDF() {
+  const btn = document.getElementById('dlBtn');
+  btn.textContent = '⏳ Generating...';
+  btn.disabled = true;
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'in', format: [4, 6], orientation: 'portrait' });
+    const labels = document.querySelectorAll('.label-wrap');
+
+    for (let i = 0; i < labels.length; i++) {
+      const label = labels[i];
+      const canvas = await html2canvas(label, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        width: label.offsetWidth,
+        height: label.offsetHeight
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      if (i > 0) pdf.addPage([4, 6], 'portrait');
+      pdf.addImage(imgData, 'JPEG', 0, 0, 4, 6);
+    }
+
+    pdf.save(`ShipEasy-Labels-${new Date().toLocaleDateString('en-IN').replace(/\//g,'-')}.pdf`);
+    showToast('✅ PDF downloaded!');
+  } catch(err) {
+    showToast('⚠️ PDF failed: ' + err.message);
+  } finally {
+    btn.textContent = '⬇ PDF';
+    btn.disabled = false;
+  }
+}
+
+function renderLabels(list) {
+  const body = document.getElementById('labelsBody');
+  const shopName  = S('name')  || 'My Store';
+  const addr1     = S('addr1') || '';
+  const addr2     = S('addr2') || '';
+  const city      = S('city')  || '';
+  const state     = S('state') || '';
+  const pin       = S('pin')   || '';
+  const phone     = S('phone') || '';
+  const logo      = S('logo')  || '';
+  const showPhone = S('optPhone') !== 'false';
+  const showOrder = S('optOrder') !== 'false';
+
+  const cityStatePIN = [city, state].filter(Boolean).join(', ') + (pin ? ' - ' + pin : '');
+  const fromLines = [addr1, addr2, cityStatePIN].filter(Boolean);
+  const today = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+
+  body.innerHTML = list.map(o => {
+
+    // Split address — separate PIN for bold display
+    const pin = o.zip || '';
+    const addrLines = [
+      o.addr1,
+      o.addr2,
+      [o.city, o.state].filter(Boolean).join(', '),
+      o.country !== 'IN' && o.country !== 'India' ? o.country : ''
+    ].filter(Boolean);
+
+    // Auto-scaling: gentle, max reduction 16px → 15px
+    const totalAddrChars = addrLines.join(' ').length;
+    const nameChars = o.name.length;
+
+    const namePx = nameChars > 24 ? 24 : nameChars > 20 ? 26 : 28;
+    const addrPx = totalAddrChars > 80 ? 15 : 16;
+
+    const bars = Array.from({length:28}, (_,i) =>
+      `<div style="height:${8+(i%5)*4}px;width:${i%4===0?3:i%3===0?2:1.5}px"></div>`
+    ).join('');
+
+    return `
+    <div class="label-wrap">
+      <div class="label">
+
+        <div class="lbl-stripe"></div>
+
+        <div class="lbl-header">
+          ${showOrder ? `
+          <div class="lbl-order-block" style="text-align:left;flex:1">
+            <span class="lbl-order-label">Order No.</span>
+            <div class="lbl-order-value">${esc(o.orderNum)}</div>
+          </div>` : `<div class="lbl-shop-text">${esc(shopName)}</div>`}
+        </div>
+
+        <div class="lbl-to">
+          <span class="lbl-section-tag">▶ Ship To</span>
+          <div class="lbl-to-name" style="font-size:${namePx}px">${esc(o.name)}</div>
+          <div class="lbl-to-addr" style="font-size:${addrPx}px">${addrLines.map(l => esc(l)).join('<br>')}</div>
+          ${pin ? `<div class="lbl-to-pin">PIN: ${esc(pin)}</div>` : ''}
+          ${showPhone && o.phone ? `<div class="lbl-to-phone">📞 ${esc(o.phone)}</div>` : ''}
+        </div>
+
+        <div class="lbl-divider"></div>
+
+        <div class="lbl-from">
+          <div class="lbl-from-text">
+            <span class="lbl-from-tag">▲ From</span>
+            <div class="lbl-from-name">${esc(shopName)}</div>
+            <div class="lbl-from-addr">${fromLines.map(l => esc(l)).join('<br>')}</div>
+            ${phone ? `<div class="lbl-from-phone">${esc(phone)}</div>` : ''}
+          </div>
+          ${logo ? `<img class="lbl-from-logo" src="${logo}" alt="${esc(shopName)}">` : ''}
+        </div>
+
+        <div class="lbl-footer">
+          <div class="lbl-date">${today} · ${esc(o.orderNum)}</div>
+          <div class="lbl-barcode">${bars}</div>
+        </div>
+
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── TOAST ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── DRAG & DROP ──
+const uz = document.getElementById('uploadZone');
+uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('drag'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('drag'));
+uz.addEventListener('drop', e => {
+  e.preventDefault();
+  uz.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) handleCSV(f);
+});
+
+// ── INIT ──
+checkSetupPrompt();
+document.getElementById('settingsNavBtn').style.display = 'flex';
+</script>
+</body>
+</html>
